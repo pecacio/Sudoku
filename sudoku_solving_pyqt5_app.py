@@ -1,6 +1,6 @@
 #importing the necessary modules
 import numpy as np
-import sudoku as sd
+import sudoku as sd #need to import the sudoku.py module
 import sys
 from functools import partial
 import datetime
