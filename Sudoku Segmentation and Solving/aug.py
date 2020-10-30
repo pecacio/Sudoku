@@ -4,41 +4,45 @@ import skimage as sk
 from skimage import transform
 from skimage.transform import SimilarityTransform
 import os
-def rotate(img,angle,seed=1):
+#functions to augment the images and the masks
+#Cannot directly use ImageDataGenerator of keras since augmenting masks changes the pixel values
+#In our case the pixel values of the mask is either 0 or 255 but the pixels takes values between 0 and 255 if augmented with interpolation order greater than 1
+
+def rotate(img,angle,seed=1):#function to rotate images
     if seed==0:
         return img
     dst=sk.transform.rotate(img.copy(),angle,preserve_range=True,mode='edge')
     return dst.astype(np.uint8)
-def rotate_m(mask,angle,seed=1):
+def rotate_m(mask,angle,seed=1):#function to rotate masks
     if seed==0:
         return mask
     dst=sk.transform.rotate(mask.copy(),angle,order=0,preserve_range=True)
     return dst.astype(np.uint8)
-def add_noise(img,seed=1):
+def add_noise(img,seed=1):#function to add noise to images
     if seed==0:
         return img
     shp=img.shape
     noise=np.random.randint(0,20,(shp[0],shp[1],shp[2])).astype(np.uint8)
     dst=cv2.add(img,noise)
     return dst
-def flip1(img,seed=1):
+def flip1(img,seed=1):#function to flip images horizontally 
     if seed==0:
         return img
     dst=np.fliplr(img)
     return dst
-def flip2(img,seed=1):
+def flip2(img,seed=1):#function to flip images vertically
     if seed==0:
         return img
     dst=np.flipud(img)
     return dst
-def shift(img,mask,seed=1):
+def shift(img,mask,seed=1):#function to shift image and mask
     right=np.random.randint(-50,50)
     up=np.random.randint(-50,50)
     M=SimilarityTransform(translation=(right,up))
     dst1=sk.transform.warp(img,M,preserve_range=True,mode='edge')
     dst2=sk.transform.warp(mask,M,preserve_range=True,order=0)
     return dst1.astype(np.uint8),dst2.astype(np.uint8)
-def create(n=200):
+def create(n=200):#function to augment the data and save it to the training folder as png format
     ids=next(os.walk('sud_data/image/'))
     l=len(ids[2])
     k=1
