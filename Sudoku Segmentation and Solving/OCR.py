@@ -8,19 +8,22 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from pandas import DataFrame as df
 
+#function to get the data for training
 def get_data():
-    mnist=fetch_openml('mnist_784',version=1)
+    mnist=fetch_openml('mnist_784',version=1)#mnist data
     data=mnist["data"]
     target=mnist["target"]
     
     target=target.astype('int')
     data=data.astype('float32')
 
+    #splitting the data for training and validation
     x_train=data[:60000]
     y_train=target[:60000]
     xval=data[60000:]
     yval=target[60000:]
     
+    #Removing the images of zero and its labels
     x_train=x_train[(y_train!=0)]
     xval=xval[(yval!=0)]
     y_train=y_train[y_train!=0]
@@ -35,6 +38,7 @@ def get_data():
     xval=xval.reshape((len(xval),28,28,1))
     xval=xval/255.
 
+    #adding images of random noise so as the model can differentiate whether the extracted cell is noise or a digit 
     z=np.random.choice([0]*np.random.randint(10,30)+[255],(10000,28,28,1))
     z=z.astype('float32')
     z=z/255.
@@ -46,6 +50,7 @@ def get_data():
     zy=np.array([0]*10000,dtype='int').reshape((-1,1))
     zy1=np.array([0]*5000,dtype='int').reshape((-1,1))
 
+    #Adding images of computer generated digits since mnist only contains handwritten digits
     ext=pd.read_csv('ocrdata.csv').values
     ext=ext[:,1:]
     ext_x=ext[:,:-1].astype('float32').reshape((-1,28,28,1))
@@ -54,18 +59,20 @@ def get_data():
     ext_x=np.vstack([ext_x]*100)
     ext_y=np.vstack([ext_y]*100)
 
+    #Extending the dataset by concatenating the above described images of noise and computer generated digits
     x_train=np.concatenate((x_train,z,ext_x[:5500]))
     xval=np.concatenate((xval,z1,ext_x[5500:]))
 
     y_train=np.concatenate((y_train,zy,ext_y[:5500]))
     yval=np.concatenate((yval,zy1,ext_y[5500:]))
 
+    #One Hot Encoding the labels
     ct=ColumnTransformer([('encoder',OneHotEncoder(),[0])])
     y_train=(ct.fit_transform(y_train)).toarray()
     yval=(ct.transform(yval)).toarray()
     return (x_train,y_train),(xval,yval)
 
-def create_model():
+def create_model():# function to create the ocrmodel
     mod=tf.keras.Sequential()
     mod.add(tf.keras.layers.Input(shape=(28,28,1)))
     mod.add(tf.keras.layers.Conv2D(64,(3,3),activation='relu',padding='same'))
@@ -81,13 +88,13 @@ def create_model():
     mod.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy'])
     return mod
 
-def train_model():
+def train_model():#function to train the model
     model=create_model()
     (x_train,y_train),(xval,yval)=get_data()
-    traingen=igd(rotation_range=20,shear_range=0.1)
+    traingen=igd(rotation_range=20,shear_range=0.1)#Augmenting Training Data
     traingen.fit(x_train)
     train=traingen.flow(x_train,y_train,batch_size=32)
-    valgen=igd(rotation_range=10,shear_range=0.1)
+    valgen=igd(rotation_range=10,shear_range=0.1)#Augmenting Validation Data
     valgen.fit(xval)
     val=valgen.flow(xval,yval,batch_size=32)
     callback_c=[tf.keras.callbacks.ModelCheckpoint('ocr.h5',monitor='val_loss',save_best_only=False,save_weights_only=False),
